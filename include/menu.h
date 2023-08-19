@@ -1,0 +1,61 @@
+R"(<!DOCTYPE html>
+<html lang='pl'>
+    <head>
+        <meta charset='utf-8'/>
+        <title>Monitoring Menu</title>
+    </head>
+    <body>
+        <style>
+            body, html {
+                height: 100%;
+                margin: 0;
+            }
+
+            .bg {
+                background-image: url("https://www.thoughtco.com/thmb/81QGhTao0s1fj7PydEBkBl7gl0U=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/521928855-56a9e2925f9b58b7d0ffac0a.jpg");
+                height: 100%;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                text-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .nav_menu {
+                border-style: solid;
+                border-color: green;
+                width: 50%;
+                height: 50%;
+                display: inline-block;
+                width: 60%;
+                height: auto;
+            }
+
+            a, .nav_option {
+                text-decoration: none;
+                font-size: 25px;
+                background-color: #333;
+                color: #eee;
+                border-style: solid;
+                border-width: 1px;
+                border-color: #222;
+            }
+
+            a:hover, .nav_option:hover {
+                color: red;
+            }
+        </style>
+
+        <div class='bg'>
+            <div class='nav_menu'>
+                <div class='nav_option'><a href='/rt_stream'>FILM NA ŻYWO ></a></div>
+                <!--<div class='nav_option'><a href='/present'>ZDJĘCIE CHWILI ></a></div>-->
+                <div class='nav_option'><a href='/pastselect'>PRZEGLĄDAJ WSZYSTKO ></a></div>
+                <div class='nav_option'><a href='/action'>PRZEGLĄDAJ AKCJĘ ></a></div>
+                <div class='nav_option'><a href='/download'>POBIERANIE ZIP ></a></div>
+            </div>
+        </div>
+    </body>
+</html>)"

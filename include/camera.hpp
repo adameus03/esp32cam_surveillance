@@ -19,4 +19,6 @@
 #define PCLK_GPIO_NUM     22
 
 esp_err_t initialize_camera();
-
+void freeze_load_fb();
+void release_fb();
+camera_fb_t *get_fb_no_reserve();

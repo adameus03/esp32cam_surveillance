@@ -4,4 +4,13 @@
 #include "esp_camera.h"
 
 void initGallery();
+//void updateTime();
 void saveImage();
+void activateStandaloneImageSaveCycle();
+void deactivateStandaloneImageSaveCycle();
+void reactivateStandaloneImageSaveCycle();
+uint32_t getImageIntervalUs();
+void imageSaveTickImplied();
+uint8_t getImageMaxLittleIndex();
+uint8_t getLittleImageIndex();
+bool checkReadyForSave();

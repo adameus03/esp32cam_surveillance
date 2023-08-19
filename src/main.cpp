@@ -1,11 +1,20 @@
 //https://RandomNerdTutorials.com/esp32-cam-video-streaming-web-server-camera-home-assistant/
+//https://plociennik.info/index.php/informatyka/systemy-wbudowane/esp8266
 
 /*
   TODO
-  [ ] Allow multiple clients to connect to the webservers
-  [ ] Handle the limited storage of the uSD card (delete the oldest file(s))
-  [ ] OTA upload & debug(override serial)
-  [ ] timer interrupts to store photos 11.08.2023
+  [ ] Allow multiple clients to connect to the webservers #0
+  [ ] Handle the limited storage of the uSD card (delete the oldest file(s)) #1
+  [x] OTA upload  #2
+  [x] timer interrupts to store photos 11.08.2023 #3
+  [ ] OTA debug(override serial) #4
+  [x] OTA upload using timer interrupt #5
+  [ ] Watchdog #6
+*/
+
+/*
+  OTA uses timer 0
+  Gallery uses timer 1
 */
 
 #include <ArduinoOTA.h>
@@ -23,7 +32,8 @@
 #include "camera.hpp"
 #include "webserver.hpp"
 #include "gallery.hpp"
-#include "synchro.hpp"
+//#include "synchro.hpp"
+#include "ota.hpp" //
 
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
@@ -37,27 +47,29 @@ void setup() {
     return;
   }
 
-  initializeSynchro();
+  //initializeSynchro();
   initializeWebServer();
-  initGallery();
 
-  startWebServer();
-  //pinMode(4, INPUT);
-  //ArduinoOTA.begin();
-  //ArduinoOTA.setPassword("TPXBzUS3");
+  initOTA();
+  startHandlingOTA();
+
+  initGallery();
+  Serial.println("After initGallery()");
+  activateStandaloneImageSaveCycle();
+  Serial.println("After activateStandaloneImageSaveCycle()");
+  
+  startWebServer(); //C//
 }
 
 void loop() {
-  /*for (int i = 0; i < 10; i++){
-    ArduinoOTA.handle();
-    delay(33);
-  }*/
-  ArduinoOTA.handle();
-  Serial.println("Before saveImage()");
-  saveImage(); //// !moved to webserver stream_handler's loop, where it is executed in intervals of 1 sec.
-  Serial.println("After saveImage()");
-  delay(300);
+  if(checkReadyForSave()){
+    imageSaveTickImplied();
+  }
+  if(checkIfTimeForOTAHandle()){
+    OTATickImplied();
+  }
+  else delay(10); //////
 
-  //delay(333);
-  //delay(1);
+  //Serial.println(heap_caps_get_free_size(0)); //D
+  //updateTime(); //concurrent r/w??
 }

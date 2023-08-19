@@ -1,4 +1,4 @@
-//#include "Arduino.h"
+#include "Arduino.h"
 #include "esp_camera.h" //OV2640
 
 #define PWDN_GPIO_NUM     32
@@ -19,7 +19,7 @@
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-
+camera_fb_t *fb = NULL;
 
 esp_err_t initialize_camera(){
     camera_config_t config;
@@ -44,9 +44,29 @@ esp_err_t initialize_camera(){
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
 
-    config.frame_size = FRAMESIZE_HVGA; // FRAMESIZE_QVGA; //FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1; // what about more?
+    config.frame_size = /*FRAMESIZE_HVGA*/ /*FRAMESIZE_QVGA*/ FRAMESIZE_SVGA;
+    config.jpeg_quality = 10/*12*//*20*/;
+    config.fb_count = 2; // what about more?
 
     return esp_camera_init(&config);
+}
+
+void freeze_load_fb(){
+    fb = esp_camera_fb_get();
+    if(!fb){
+        Serial.println("NULL detected in freeze_load_fb()");
+        //Serial.println("Reinitializing camera (driver)...");
+        //esp_camera_deinit();
+        //initialize_camera();
+    }
+}
+
+void release_fb(){
+    esp_camera_fb_return(fb);
+    //(fb->buf); //experimental
+    //fb = NULL; //maybe this is the cause of the memory leak, because esp_camera_fb_return(fb) would still be trying to free the buffer, but fb is already NULL?
+}
+
+camera_fb_t* get_fb_no_reserve(){
+    return fb;
 }

@@ -5,6 +5,10 @@
 
 #include "OTACredentials.hpp"
 
+#define OTA_INTERVAL_US 30000
+
+volatile bool isTimeForOTAHandle = false;
+
 void initOTA(){
   ArduinoOTA.setHostname(OTA_MDNS_HOSTNAME);
   ArduinoOTA.setPasswordHash(OTA_PASSWD_HASH);
@@ -42,4 +46,30 @@ void initOTA(){
   Serial.println("ArduinoOTA before begin");
   ArduinoOTA.begin();
   Serial.println("ArduinoOTA began");
+}
+
+void OTATickImplied(){
+  //.Serial.println("Inside OTATickImplied()"); //CHECK THIS <-------
+  isTimeForOTAHandle = false;
+  ArduinoOTA.handle();
+  //isTimeForOTAHandle = false;
+}
+
+void IRAM_ATTR onOTATimer(){
+  //ArduinoOTA.handle();
+  isTimeForOTAHandle = true;
+}
+
+/**
+ * @brief timer 0 to attach an an interrupt. Run ArduinoOTA.handle() every 300ms
+*/
+void startHandlingOTA(){ 
+  hw_timer_t *ota_timer = timerBegin(0, 80, true); //ChatGPT said ESP32-S timer base frequency is 80MHz
+  timerAttachInterrupt(ota_timer, &onOTATimer, true);
+  timerAlarmWrite(ota_timer, OTA_INTERVAL_US, true);
+  timerAlarmEnable(ota_timer);
+}
+
+bool checkIfTimeForOTAHandle(){
+  return isTimeForOTAHandle;
 }
