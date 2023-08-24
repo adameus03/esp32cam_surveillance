@@ -16,7 +16,7 @@ R"(<!DOCTYPE html>
             }
         </style>
         <label for="playback-start-time">Wybierz początek odtwarzania:</label>
-        <input type="datetime-local" id="playback-start-time" name="playback-start-time" value="2018-06-12T19:30" min="2018-06-07T00:00" max="2018-06-14T00:00" />
+        <input type="datetime-local" id="playback-start-time" name="playback-start-time"/>
         <button id='play_btn'>Odtwarzaj</button>
 
         <script>

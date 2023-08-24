@@ -118,6 +118,18 @@ esp_err_t stream_image(std::shared_ptr<File> file, httpd_req_t* req, const size_
     return res;
 }
 
+void liu(uint8_t* lip, tm* tip){//little index update
+    if(*lip>=getImageMaxLittleIndex()){
+        time_t timestamp = mktime(tip);
+        timestamp++;
+        *tip = *localtime(&timestamp);
+        *lip = 0;
+    }
+    else {
+        (*lip)++;
+    }
+}
+
 static esp_err_t past_handler(httpd_req_t* req){
     // Extract GET parameters from the query string
     char query[128];
@@ -176,11 +188,15 @@ static esp_err_t past_handler(httpd_req_t* req){
         //[combime year,month...second into time_param]
         char datetime_pli[24];
         strftime(datetime_pli, sizeof(datetime_pli), "%Y-%m-%d_%H-%M-%S", &timeinfo);
-        strcpy(datetime_pli + 19, "_" + little_index);
+        //itoa()
+        //strcpy(datetime_pli + 19, "_" + itoa(little_index));
+        sprintf(datetime_pli + strlen(datetime_pli), "_%u", little_index);
 
         path = datetime_pli; //instead of time_param
-        path = "frame_" + path + ".jpg";
+        path = "/frame_" + path + ".jpg";
 
+        Serial.println(datetime_pli);
+        Serial.println("_" + little_index);
         Serial.println("TRYREAD file " + path + " ...");
 
         file = SD_MMC.open(path.c_str(), FILE_READ);
@@ -190,6 +206,16 @@ static esp_err_t past_handler(httpd_req_t* req){
 
             static size_t fsize;
             fsize = file.size();
+
+            /*static ulong tdiff_us;
+            static ulong rem_us;
+            tdiff_us = 1000*(millis() - start_millis);
+            rem_us = getImageIntervalUs() - tdiff_us;
+            if(rem_us>=1000){
+                delay(rem_us / 1000);
+            }*/
+            
+
             if(res == ESP_OK){
                 size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fsize);
                 res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
@@ -204,17 +230,22 @@ static esp_err_t past_handler(httpd_req_t* req){
             }
 
 
-            if((millis() - start_millis)*1000 >= getImageIntervalUs()){//optimize?
+            /*if(tdiff_us >= getImageIntervalUs()){//optimize?
                 //T//saveImage(); <-- HERE (TOO)
                 start_millis = millis();
-            }
+            }*/
+            start_millis = millis();
 
             if(res != ESP_OK){
                 Serial.println("Break conditional(past)");
                 break;
             }
 
-            little_index++;
+            /*little_index++;
+            if(little_index == getImageMaxLittleIndex()){
+
+            }*/
+            liu(&little_index, &timeinfo);
             continue;
         }
 
@@ -226,12 +257,7 @@ static esp_err_t past_handler(httpd_req_t* req){
         }
 
         //"increment" timeParam(year,month...second)
-        if(little_index>getImageMaxLittleIndex()){
-            time_t timestamp = mktime(&timeinfo);
-            timestamp++;
-            timeinfo = *localtime(&timestamp);
-            little_index = 0;
-        }
+        liu(&little_index, &timeinfo);
     }
 
     reactivateStandaloneImageSaveCycle();

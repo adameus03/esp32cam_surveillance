@@ -7,7 +7,9 @@
 //#include "synchro.hpp"
 #include "camera.hpp"
 
-#define IMAGE_INTERVAL_US 500000
+//#define IMAGE_INTERVAL_US 500000
+//#define IMAGE_MAX_LITTLE_INDEX 1
+#define IMAGE_INTERVAL_US 300000
 #define IMAGE_MAX_LITTLE_INDEX 2
 
 hw_timer_t *imageSaveTimer = NULL;
@@ -50,7 +52,7 @@ String getDatetimeString(){
   struct tm timeinfo;
   //timeinfo.tm_isdst
 
-  Serial.println("if(!getLocalTime(&timeinfo))");
+  //D//Serial.println("if(!getLocalTime(&timeinfo))");
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
     return "";
@@ -60,15 +62,15 @@ String getDatetimeString(){
   Serial.println("localtime_r(&now, &timeinfo);");
   localtime_r(&now, &timeinfo);*/
 
-  Serial.println("char timeString[20];");
+  //D//Serial.println("char timeString[20];");
   char timeString[20];
 
-  Serial.println("strftime(timeString, sizeof(timeString), \"%Y-%m-%d_%H-%M-%S\", &timeinfo);");
+  //D//Serial.println("strftime(timeString, sizeof(timeString), \"%Y-%m-%d_%H-%M-%S\", &timeinfo);");
   strftime(timeString, sizeof(timeString), "%Y-%m-%d_%H-%M-%S", &timeinfo);
 
-  Serial.println(timeString);
+  //D//Serial.println(timeString);
 
-  Serial.println("return String(timeString);");
+  //D//Serial.println("return String(timeString);");
   return String(timeString);
 }
 
@@ -111,17 +113,21 @@ void saveImage(){
   //Serial.println("String path = storageDirectory + \"/frame_\" + dateTimeString + \"___\" + imageIndex++ + \".jpg\";");
   String path = /*storageDirectory+*/ "/frame_" + dateTimeString + "_" + littleImageIndex + ".jpg";
 
+  Serial.println("Save file at " + path);
+
   //.Serial.println("String path = storageDirectory + \"/frame_\" + imageIndex++ + \".jpg\";");
   ////String path = storageDirectory + "/frame_" + imageIndex++ + ".jpg";
 
   //.Serial.printf("Picture file name: %s\n", path.c_str());
-  
+
   // Save picture to microSD card
-  //fs::FS &fs = SD_MMC; 
-  //File file = fs.open(path.c_str(), FILE_WRITE);
+  // fs::FS &fs = SD_MMC;
+  // File file = fs.open(path.c_str(), FILE_WRITE);
 
   //.Serial.println("File file = SD_MMC.open(path.c_str(), FILE_WRITE);"); //D
+  Serial.println("Begin open file");
   File file = SD_MMC.open(path.c_str(), FILE_WRITE);
+  Serial.println("File open");
 
   //.Serial.println("if(!file)"); //D
   if(!file){
@@ -148,10 +154,10 @@ void saveImage(){
 }
 
 void IRAM_ATTR onImageSaveTimer(){
-
+  //Serial.println("Image tick");
   uint8_t littleImageIndexCopy = littleImageIndex;
   littleImageIndexCopy++;
-  littleImageIndexCopy %= IMAGE_MAX_LITTLE_INDEX;
+  littleImageIndexCopy %= (IMAGE_MAX_LITTLE_INDEX+1);
 
   isReadyForSave = true;
   littleImageIndex = littleImageIndexCopy;
@@ -164,10 +170,10 @@ void imageSaveTickImplied(){
   //.Serial.println("freeze_load_fb();");
   freeze_load_fb();
 
-  //.Serial.println("saveImage();");
+  Serial.println("saveImage();");
   saveImage();
 
-  //.Serial.println("release_fb();");
+  Serial.println("release_fb();");
   release_fb();
 }
 

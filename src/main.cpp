@@ -53,6 +53,7 @@ void setup() {
   initOTA();
   startHandlingOTA();
 
+  delay(3000);
   initGallery();
   Serial.println("After initGallery()");
   activateStandaloneImageSaveCycle();

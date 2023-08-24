@@ -11,7 +11,7 @@ volatile bool isTimeForOTAHandle = false;
 
 void initOTA(){
   ArduinoOTA.setHostname(OTA_MDNS_HOSTNAME);
-  ArduinoOTA.setPasswordHash(OTA_PASSWD_HASH);
+  //ArduinoOTA.setPasswordHash(OTA_PASSWD_HASH);  ////////////
   
   ArduinoOTA.onStart([](){
     String type = ArduinoOTA.getCommand() == U_FLASH ? "sketch" : "filesystem";
