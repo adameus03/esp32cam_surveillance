@@ -142,6 +142,7 @@ void saveImage(){
     if(!frameBuffer){
       Serial.println("NULL frame buffer detected in saveImage()");
       //reset camera??
+      return;
     }
 
     //.Serial.println("file.write(frameBuffer->buf, frameBuffer->len);");

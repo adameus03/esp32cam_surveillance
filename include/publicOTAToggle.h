@@ -2,7 +2,7 @@ R"TESSERACT(<!DOCTYPE html>
 <html lang='pl'>
     <head>
         <meta charset='utf-8'/>
-        <title>Monitoring Menu</title>
+        <title>PublicOTA Toggle</title>
     </head>
     <body>
         <style>
@@ -50,15 +50,8 @@ R"TESSERACT(<!DOCTYPE html>
 
         <div class='bg'>
             <div class='nav_menu'>
-                <div class='nav_option'><a href='/stream'>FILM NA ŻYWO ></a></div>
-                <!--<div class='nav_option'><a href='/present'>ZDJĘCIE CHWILI ></a></div>-->
-                <div class='nav_option'><a href='/pastselect'>PRZEGLĄDAJ WSZYSTKO ></a></div>
-                <div class='nav_option'><a href='/action'>PRZEGLĄDAJ AKCJĘ (j. nieaktywne)></a></div>
-                <div class='nav_option'><a href='/download'>POBIERANIE ZIP (j. nieaktywne)></a></div>
-                <div class='nav_option'><a href='/advanced'>ZAAWANSOWANE (opcje programisty)</a></div>
-                <div class='nav_option'><a href='http://178.183.205.144:8000/'>KAMERA 1 (PRZÓD)</a></div>
-                <div class='nav_option'><a href='http://178.183.205.144:8010/'>KAMERA 2 (TYŁ)</a></div>
-                <div class='nav_option'><a href='http://178.183.205.144:8020/'>KAMERA 3 (BOK)</a></div>
+                <div class='nav_option'><a href='ota_upload?state=on'>WŁĄCZ</a></div>
+                <div class='nav_option'><a href='ota_upload?state=off'>WYŁĄCZ</a></div>
             </div>
         </div>
     </body>

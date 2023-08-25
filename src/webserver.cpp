@@ -3,6 +3,7 @@
 #include "esp_camera.h"
 
 #include "gallery.hpp"
+#include "ota.hpp" // for public OTA toggler
 //#include "synchro.hpp"
 
 #include "WiFiCredentials.hpp"
@@ -87,6 +88,15 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
 
     reactivateStandaloneImageSaveCycle(); //RE!
     return res; //?
+}
+
+static esp_err_t stream_handler(httpd_req_t* req){
+    const char *response =
+#include "stream_wrapper.h"
+    ;
+    //const char *response = "placeholder";
+    httpd_resp_send(req, response, strlen(response));
+    return ESP_OK;
 }
 
 static esp_err_t present_handler(httpd_req_t* req){
@@ -199,7 +209,7 @@ static esp_err_t past_handler(httpd_req_t* req){
         Serial.println("_" + little_index);
         Serial.println("TRYREAD file " + path + " ...");
 
-        file = SD_MMC.open(path.c_str(), FILE_READ);
+        file = SD_MMC.open(path.c_str(), FILE_READ); //{{{OPEN NEXT FILE?}}}
         if(file){
             Serial.println("READING file " + path);
             blank_count = 0;
@@ -268,7 +278,9 @@ static esp_err_t root_handler(httpd_req_t* req){
     const char *response =
 #include "menu.h"
         ;
+    //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
+    
 
     return ESP_OK;
 }
@@ -304,8 +316,61 @@ static esp_err_t pastselect_handler(httpd_req_t* req){
     const char *response = 
     #include "pastselect.h"
     ;
+    //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
     return ESP_OK;
+}
+
+static esp_err_t advanced_handler(httpd_req_t* req){
+    const char *response =
+#include "advanced.h"
+        ;
+    //const char *response = "placeholder";
+    httpd_resp_send(req, response, strlen(response));
+    return ESP_OK;
+}
+
+/* Non-local OTA */
+static esp_err_t ota_upload_handler(httpd_req_t* req){
+    //httpd
+    /*const char *response = "Hello OTA. Not implemented";
+    httpd_resp_send(req, response, strlen(response));*/
+
+
+    char query[128];
+    char state_param[4];
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        if (httpd_query_key_value(query, "state", state_param, sizeof(state_param)) != ESP_OK) {
+            const char *response = "No state param or error reading state param.";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;
+        }
+    }
+    else {
+        //const char *response = "Invalid query.";
+        const char *response =
+#include "publicOTAToggle.h"
+            ;
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    if(!strcmp("on", state_param)){
+        resumePublicOTA();
+        const char *response = "PublicOTA is on";
+        httpd_resp_send(req, response, strlen(response));
+    }
+    else if(!strcmp("off", state_param)){
+        haltPublicOTA();
+        const char *response = "PublicOTA is off";
+        httpd_resp_send(req, response, strlen(response));
+    }   
+    else {
+        const char *response = "Wrong state value provided.";
+        httpd_resp_send(req, response, strlen(response));
+    }
+    return ESP_OK; //{{{return res instead?}}}
 }
 
 void initializeWebServer(){
@@ -323,6 +388,40 @@ void initializeWebServer(){
     //initOTA();
 }
 
+/*esp_err_t wildcard_level_1_uri_handler_router(httpd_req_t* req){
+    const char *uri = req->uri;
+    if(!strcmp("m/rt_stream", uri)){
+        return rt_stream_handler(req);
+    }
+    else if(!strcmp("/m/stream", uri)){
+        return stream_handler(req);
+    }
+    else if(!strcmp("/m/present", uri)){
+        return present_handler(req);
+    }
+    else if(!strcmp("/m/past", uri)){
+        return past_handler(req);
+    }
+    else if(!strcmp("/m/", uri)){
+        return root_handler(req);
+    }
+    else if(!strcmp("/m/ls", uri)){
+        return ls_handler(req);
+    }
+    else if(!strcmp("/m/pastselect", uri)){
+        return pastselect_handler(req);
+    }
+    else if(!strcmp("/m/advanced", uri)){
+        return advanced_handler(req);
+    }
+    else if(!strcmp("/m/ota_upload", uri)){
+        return ota_upload_handler(req);
+    }
+    //httpd_resp_send_404(req);
+    httpd_resp_send(req, "Hello", 5);
+    return ESP_OK;
+}*/
+
 void startWebServer(){
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.task_priority = 1U;
@@ -332,6 +431,13 @@ void startWebServer(){
         .uri = "/rt_stream",
         .method = HTTP_GET,
         .handler = rt_stream_handler,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t index_uri_stream = {
+        .uri = "/stream",
+        .method = HTTP_GET,
+        .handler = stream_handler,
         .user_ctx = NULL
     };
 
@@ -370,14 +476,49 @@ void startWebServer(){
         .user_ctx = NULL
     };
 
+    httpd_uri_t index_uri_advanced = {
+        .uri = "/advanced",
+        .method = HTTP_GET,
+        .handler = advanced_handler,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t index_uri_ota_upload = {
+        .uri = "/ota_upload",
+        .method = HTTP_GET,
+        .handler = ota_upload_handler,
+        .user_ctx = NULL
+    };
+    /*httpd_uri_t index_uri_wildcard_lvl_1 = {
+        .uri = "/m/*",
+        .method = HTTP_GET,
+        .handler = wildcard_level_1_uri_handler_router,
+        .user_ctx = NULL};*/
+
     // Serial.printf("Starting web server on port: '%d'\n", config.server_port);
     if (httpd_start(&server_httpd, &config) == ESP_OK)
     {
         httpd_register_uri_handler(server_httpd, &index_uri_rt_stream);
-        httpd_register_uri_handler(server_httpd, &index_uri_present);
+        httpd_register_uri_handler(server_httpd, &index_uri_stream);
+        //httpd_register_uri_handler(server_httpd, &index_uri_present);
         httpd_register_uri_handler(server_httpd, &index_uri_past);
         httpd_register_uri_handler(server_httpd, &index_uri_root);
-        httpd_register_uri_handler(server_httpd, &index_uri_ls);
+        //httpd_register_uri_handler(server_httpd, &index_uri_ls);
         httpd_register_uri_handler(server_httpd, &index_uri_pastselect);
+        httpd_register_uri_handler(server_httpd, &index_uri_advanced);
+        httpd_register_uri_handler(server_httpd, &index_uri_ota_upload);
+
+        /*esp_err_t res = httpd_unregister_uri(server_httpd, "*");
+        if(res != ESP_OK){
+            Serial.println("Failed to unregister handlers for /* !");
+            Serial.println("Reason: ");
+            Serial.println(esp_err_to_name(res));
+        }*/
+        /*esp_err_t res = httpd_register_uri_handler(server_httpd, &index_uri_wildcard_lvl_1);
+        if(res != ESP_OK){
+            Serial.println("Failed to register the uri handler for /m/* !");
+            Serial.println("Reason: ");
+            Serial.println(esp_err_to_name(res));
+        };*/
     }
 }

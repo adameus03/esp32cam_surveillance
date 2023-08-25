@@ -15,6 +15,7 @@
 /*
   OTA uses timer 0
   Gallery uses timer 1
+  Public OTA uses timer 2
 */
 
 #include <ArduinoOTA.h>
@@ -50,8 +51,11 @@ void setup() {
   //initializeSynchro();
   initializeWebServer();
 
-  initOTA();
-  startHandlingOTA();
+  /*initOTA();
+  startHandlingOTA();*/
+
+  startHandlingPublicOTA();
+  haltPublicOTA(); // {{{not too early?}}}
 
   delay(3000);
   initGallery();
@@ -66,9 +70,18 @@ void loop() {
   if(checkReadyForSave()){
     imageSaveTickImplied();
   }
-  if(checkIfTimeForOTAHandle()){
+  /*if(checkIfTimeForOTAHandle()){
     OTATickImplied();
+  }*/
+  
+  /*if(checkIfTimeForHTTPHandle()){
+    HTTPTickImplied();
+  }*/
+
+  if(checkIfTimeForPublicOTAHandle()){
+    publicOTATickImplied();
   }
+
   else delay(10); //////
 
   //Serial.println(heap_caps_get_free_size(0)); //D

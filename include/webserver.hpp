@@ -4,3 +4,6 @@
 
 void initializeWebServer();
 void startWebServer();
+
+/*void HTTPTickImplied();//
+bool checkIfTimeForHTTPHandle();//*/

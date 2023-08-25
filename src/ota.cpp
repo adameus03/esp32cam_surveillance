@@ -3,11 +3,19 @@
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 
+#include "WebServer.h" // for non-local OTA
+#include "Update.h"    //also for non-local OTA
+
 #include "OTACredentials.hpp"
 
 #define OTA_INTERVAL_US 30000
+#define PUBLIC_OTA_INTERVAL_US 3000
 
 volatile bool isTimeForOTAHandle = false;
+volatile bool isTimeForPubliOTAHandle = false;
+
+WebServer publicOTAServer(9000);
+
 
 void initOTA(){
   ArduinoOTA.setHostname(OTA_MDNS_HOSTNAME);
@@ -72,4 +80,68 @@ void startHandlingOTA(){
 
 bool checkIfTimeForOTAHandle(){
   return isTimeForOTAHandle;
+}
+
+
+/* NON LOCAL */
+
+void publicOTATickImplied(){
+  isTimeForPubliOTAHandle = false;
+  publicOTAServer.handleClient();
+}
+
+void onPublicOTATimer(){
+  isTimeForPubliOTAHandle = true;
+}
+
+void startHandlingPublicOTA(){
+  publicOTAServer.on("/", HTTP_GET, []() {
+    publicOTAServer.sendHeader("Connection", "close");
+    publicOTAServer.send(200, "text/html", 
+    #include "publicOTA.h"
+    );
+  });
+  publicOTAServer.on("/update", HTTP_POST, []() {
+    publicOTAServer.sendHeader("Connection", "close");
+    publicOTAServer.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = publicOTAServer.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      /* flashing firmware to ESP*/
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+  publicOTAServer.begin();
+
+  hw_timer_t *public_ota_timer = timerBegin(2, 80, true);
+  timerAttachInterrupt(public_ota_timer, &onPublicOTATimer, true);
+  timerAlarmWrite(public_ota_timer, PUBLIC_OTA_INTERVAL_US, true);
+  timerAlarmEnable(public_ota_timer);
+}
+
+void haltPublicOTA(){
+  publicOTAServer.close();
+  publicOTAServer.stop();
+}
+
+void resumePublicOTA(){
+  publicOTAServer.begin();
+}
+
+bool checkIfTimeForPublicOTAHandle(){
+  return isTimeForPubliOTAHandle;
 }
