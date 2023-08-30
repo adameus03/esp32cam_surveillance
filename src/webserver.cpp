@@ -6,7 +6,7 @@
 #include "ota.hpp" // for public OTA toggler
 //#include "synchro.hpp"
 
-#include "WiFiCredentials.hpp"
+#include "confidential/WiFiCredentials.hpp"
 
 #include "fsutils.hpp"
 
@@ -111,7 +111,7 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
 
 static esp_err_t stream_handler(httpd_req_t* req){
     const char *response =
-#include "stream_wrapper.h"
+#include "htdocs/stream_wrapper.html"
     ;
     //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
@@ -295,7 +295,7 @@ static esp_err_t past_handler(httpd_req_t* req){
 
 static esp_err_t root_handler(httpd_req_t* req){
     const char *response =
-#include "menu.h"
+#include "htdocs/menu.html"
         ;
     //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
@@ -333,7 +333,7 @@ static esp_err_t pastselect_handler(httpd_req_t* req){
     //send pastselect website]
 
     const char *response = 
-    #include "pastselect.h"
+    #include "htdocs/pastselect.html"
     ;
     //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
@@ -342,7 +342,7 @@ static esp_err_t pastselect_handler(httpd_req_t* req){
 
 static esp_err_t advanced_handler(httpd_req_t* req){
     const char *response =
-#include "advanced.h"
+#include "htdocs/advanced.html"
         ;
     //const char *response = "placeholder";
     httpd_resp_send(req, response, strlen(response));
@@ -369,7 +369,7 @@ static esp_err_t ota_upload_handler(httpd_req_t* req){
     else {
         //const char *response = "Invalid query.";
         const char *response =
-#include "publicOTAToggle.h"
+#include "htdocs/publicOTAToggle.html"
             ;
         httpd_resp_send(req, response, strlen(response));
         return ESP_OK;
@@ -390,6 +390,27 @@ static esp_err_t ota_upload_handler(httpd_req_t* req){
         httpd_resp_send(req, response, strlen(response));
     }
     return ESP_OK; //{{{return res instead?}}}
+}
+
+static esp_err_t threshold_subhandler(httpd_req_t* req, char* query){
+    char val_param[20];
+    if (httpd_query_key_value(query, "val", val_param, sizeof(val_param)) != ESP_OK) {
+        //const char *response = "No val param or error reading op param.";
+        String response =
+#include "htdocs/threshold.html"
+        ;
+
+        response.replace("%{VAL}%", String(getAnalyserApprovalThreshold()));
+        httpd_resp_send(req, response.c_str(), response.length());
+        return ESP_OK;
+    }
+    else {
+        uint32_t val = atoi(val_param);
+        setAnalyserApprovalThreshold(val);
+        const char *response = "Successfully set the new threshold value";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
 }
 
 static esp_err_t cmd_handler(httpd_req_t* req){
@@ -428,6 +449,9 @@ static esp_err_t cmd_handler(httpd_req_t* req){
             const char *response = "Activated.";
             httpd_resp_send(req, response, strlen(response));
         }
+    }
+    else if(!strcmp("threshold", op_param)){
+        threshold_subhandler(req, query);
     }
     else {
         const char *response = "Wrong op value provided.";

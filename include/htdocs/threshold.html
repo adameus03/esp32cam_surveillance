@@ -2,7 +2,7 @@ R"TESSERACT(<!DOCTYPE html>
 <html lang='pl'>
     <head>
         <meta charset='utf-8'/>
-        <title>Monitoring Zaawansowane Menu</title>
+        <title>Monitoring Menu</title>
     </head>
     <body>
         <style>
@@ -50,11 +50,13 @@ R"TESSERACT(<!DOCTYPE html>
 
         <div class='bg'>
             <div class='nav_menu'>
-                <div class='nav_option'><a href='/ota_upload'>AKTUALIZACJA OTA ></a></div>
-                <!--<div class='nav_option'><a href='/usd'>KARTA PAMIĘCI ></a></div>-->
-                <div class='nav_option'><a href='/cmd?op=format'>FORMAT</a></div>
-                <div class='nav_option'><a href='/cmd?op=diff'>PRZEŁĄCZ OBSŁUGĘ RÓŻNICOWEJ DETEKCJI ZMIAN</a></div>
-                <div class='nav_option'><a href='/'>POWRÓT</a></div>
+                <form method='GET' action='/cmd' class='nav_option'>
+                    <label for='val'>Podaj wartość progową: </label>
+                    <br />
+                    <input name='op' value='threshold' style='display: none'/>
+                    <input name='val' type='number' value='%{VAL}%' />
+                    <input type='submit' value='Zatwierdź' />
+                </form>
             </div>
         </div>
     </body>

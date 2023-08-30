@@ -4,7 +4,9 @@
 #define NULL_BUF_DIFF_INDEX 0 
 #define NULL_CACHED_BUF_DIFF_INDEX  272
 
-#define ANALYSER_APPROVAL_THRESHOLD 270
+//#define ANALYSER_APPROVAL_THRESHOLD 270
+
+static uint32_t ANALYSER_APPROVAL_THRESHOLD = 270;
 
 uint8_t *cached_buf = NULL;
 uint32_t cached_buf_size = 0x0;
@@ -130,6 +132,14 @@ uint32_t checkApproval(uint8_t* buf, size_t buf_sz, size_t buf_w){
     else {
         return true;
     }
+}
+
+const uint32_t getAnalyserApprovalThreshold(){
+    return ANALYSER_APPROVAL_THRESHOLD;
+}
+
+void setAnalyserApprovalThreshold(const uint32_t& val){
+    ANALYSER_APPROVAL_THRESHOLD = val;
 }
 
 

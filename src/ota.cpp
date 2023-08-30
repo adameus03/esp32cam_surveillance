@@ -6,7 +6,7 @@
 #include "WebServer.h" // for non-local OTA
 #include "Update.h"    //also for non-local OTA
 
-#include "OTACredentials.hpp"
+#include "confidential/OTACredentials.hpp"
 
 #define OTA_INTERVAL_US 30000
 #define PUBLIC_OTA_INTERVAL_US 3000
@@ -98,7 +98,7 @@ void startHandlingPublicOTA(){
   publicOTAServer.on("/", HTTP_GET, []() {
     publicOTAServer.sendHeader("Connection", "close");
     publicOTAServer.send(200, "text/html", 
-    #include "publicOTA.h"
+    #include "htdocs/publicOTA.html"
     );
   });
   publicOTAServer.on("/update", HTTP_POST, []() {

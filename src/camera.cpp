@@ -50,6 +50,10 @@ esp_err_t initialize_camera(){
     return esp_camera_init(&config);
 }
 
+esp_err_t reinitialize_camera(){
+    
+}
+
 void freeze_load_fb(){
     fb = esp_camera_fb_get();
     if(!fb){

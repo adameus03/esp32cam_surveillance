@@ -6,7 +6,7 @@
 #include "WebServer.h" // for non-local OTA
 #include "Update.h"    //also for non-local OTA
 
-#include "OTACredentials.hpp"
+#include "confidential/OTACredentials.hpp"
 
 void initOTA();
 void OTATickImplied();
