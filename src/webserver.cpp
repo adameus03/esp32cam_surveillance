@@ -12,9 +12,11 @@
 
 #include "time.h"
 
+#include "analyser.hpp"
+
 #define PART_BOUNDARY "123456789000000000000987654321"
 
-#define MAX_BLANK 10
+#define MAX_BLANK 15
 
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
@@ -50,14 +52,31 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
             res = ESP_FAIL;
         } 
 
+        ///<compression>
+        uint8_t *jpg_buf = NULL;
+        size_t jpg_buf_len;
+        bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+        if(!jpeg_converted){
+            Serial.println("JPEG compression failed");
+            res = ESP_FAIL;
+        }
+        ///</compression>
+
+
+
         if(res == ESP_OK){
             size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fb->len);
             res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
         }
         
         if(res == ESP_OK){
-            res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+            //res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+            res = httpd_resp_send_chunk(req, (char*)jpg_buf, jpg_buf_len);
         }
+
+        ///<compression free>
+        free(jpg_buf);
+        ///</compression free>
         
         if(res == ESP_OK){
             res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
@@ -181,7 +200,7 @@ static esp_err_t past_handler(httpd_req_t* req){
     ///////
     /////
 
-    uint8_t blank_count = 0;
+    uint32_t blank_count = 0;
     esp_err_t res = ESP_OK;
     char *part_buf[64];
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
@@ -373,6 +392,50 @@ static esp_err_t ota_upload_handler(httpd_req_t* req){
     return ESP_OK; //{{{return res instead?}}}
 }
 
+static esp_err_t cmd_handler(httpd_req_t* req){
+    char query[128];
+    char op_param[10];
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        if (httpd_query_key_value(query, "op", op_param, sizeof(op_param)) != ESP_OK) {
+            const char *response = "No op param or error reading op param.";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;
+        }
+    }
+    else {
+        //const char *response = "Invalid query.";
+        const char *response = "Nothing to do";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    if(!strcmp("format", op_param)){
+        //Formatuj {{{implement ???}}}
+
+
+        const char *response = "Micro SD format not implemented";
+        httpd_resp_send(req, response, strlen(response));
+    }
+    else if(!strcmp("diff", op_param)){
+        if(checkCaching()){
+            deactivateCaching();
+            const char *response = "Deactivated.";
+            httpd_resp_send(req, response, strlen(response));
+        }
+        else {
+            activateCaching(NULL, 0x0);
+            const char *response = "Activated.";
+            httpd_resp_send(req, response, strlen(response));
+        }
+    }
+    else {
+        const char *response = "Wrong op value provided.";
+        httpd_resp_send(req, response, strlen(response));
+    }
+    return ESP_OK; //{{{return res instead?}}}
+}
+
 void initializeWebServer(){
     WiFi.begin(WIFI_SSID, WIFI_PASSWD);
     while (WiFi.status() != WL_CONNECTED) {
@@ -441,12 +504,12 @@ void startWebServer(){
         .user_ctx = NULL
     };
 
-    httpd_uri_t index_uri_present = {
+    /*httpd_uri_t index_uri_present = {
         .uri = "/present",
         .method = HTTP_GET,
         .handler = present_handler,
         .user_ctx = NULL
-    };
+    };*/
 
     httpd_uri_t index_uri_past = {
         .uri = "/past",
@@ -462,12 +525,12 @@ void startWebServer(){
         .user_ctx = NULL
     };
 
-    httpd_uri_t index_uri_ls = {
+    /*httpd_uri_t index_uri_ls = {
         .uri = "/ls",
         .method = HTTP_GET,
         .handler = ls_handler,
         .user_ctx = NULL
-    };
+    };*/
 
     httpd_uri_t index_uri_pastselect = {
         .uri = "/pastselect",
@@ -489,6 +552,13 @@ void startWebServer(){
         .handler = ota_upload_handler,
         .user_ctx = NULL
     };
+
+    httpd_uri_t index_uri_cmd = {
+        .uri = "/cmd",
+        .method = HTTP_GET,
+        .handler = cmd_handler,
+        .user_ctx = NULL
+    };
     /*httpd_uri_t index_uri_wildcard_lvl_1 = {
         .uri = "/m/*",
         .method = HTTP_GET,
@@ -507,6 +577,8 @@ void startWebServer(){
         httpd_register_uri_handler(server_httpd, &index_uri_pastselect);
         httpd_register_uri_handler(server_httpd, &index_uri_advanced);
         httpd_register_uri_handler(server_httpd, &index_uri_ota_upload);
+
+        httpd_register_uri_handler(server_httpd, &index_uri_cmd);
 
         /*esp_err_t res = httpd_unregister_uri(server_httpd, "*");
         if(res != ESP_OK){

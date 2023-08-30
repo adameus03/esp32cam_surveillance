@@ -3,6 +3,8 @@
 #include "time.h"
 #include "esp_camera.h"
 
+#include "analyser.hpp"
+
 void initGallery();
 //void updateTime();
 void saveImage();

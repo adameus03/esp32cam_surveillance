@@ -52,6 +52,8 @@ R"TESSERACT(<!DOCTYPE html>
             <div class='nav_menu'>
                 <div class='nav_option'><a href='/ota_upload'>AKTUALIZACJA OTA ></a></div>
                 <!--<div class='nav_option'><a href='/usd'>KARTA PAMIĘCI ></a></div>-->
+                <div class='nav_option'><a href='/cmd?op=format'>FORMAT</a></div>
+                <div class='nav_option'><a href='/cmd?op=diff'>PRZEŁĄCZ OBSŁUGĘ RÓŻNICOWEJ DETEKCJI ZMIAN</a></div>
                 <div class='nav_option'><a href='/'>POWRÓT</a></div>
             </div>
         </div>

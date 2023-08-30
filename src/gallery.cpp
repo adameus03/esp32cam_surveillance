@@ -7,6 +7,8 @@
 //#include "synchro.hpp"
 #include "camera.hpp"
 
+#include "analyser.hpp"
+
 //#define IMAGE_INTERVAL_US 500000
 //#define IMAGE_MAX_LITTLE_INDEX 1
 #define IMAGE_INTERVAL_US 300000
@@ -146,9 +148,26 @@ void saveImage(){
     }
 
     //.Serial.println("file.write(frameBuffer->buf, frameBuffer->len);");
-    file.write(frameBuffer->buf, frameBuffer->len); // payload (image), payload length
+
+
+    ///<compression>
+    uint8_t *jpg_buf = NULL;
+    size_t jpg_buf_len;
+    bool jpeg_converted = frame2jpg(frameBuffer, 80, &jpg_buf, &jpg_buf_len);
+    if(!jpeg_converted){
+      Serial.println("JPEG compression failed in saveImage()");
+    }
+    ///</compression>
+
+
+    //file.write(frameBuffer->buf, frameBuffer->len); // payload (image), payload length
+    file.write(jpg_buf, jpg_buf_len);
 
     //.Serial.printf("Saved: %s\n", path.c_str());
+
+    ///<compression free>
+    free(jpg_buf);
+    ///</compression free>
   }
 
   file.close();
@@ -167,9 +186,25 @@ void IRAM_ATTR onImageSaveTimer(){
 
 
 void imageSaveTickImplied(){
+
   isReadyForSave = false;
+
   //.Serial.println("freeze_load_fb();");
   freeze_load_fb();
+
+  if(checkCaching()){
+    camera_fb_t *frameBuffer = get_fb_no_reserve();
+    if(frameBuffer == NULL){
+      Serial.println("NULL frameBuffer detected in imageSaveTickImplied()");
+      Serial.println("release_fb();");
+      release_fb();
+    }
+    if(!checkApproval(frameBuffer->buf, frameBuffer->len, frameBuffer->width)){
+      Serial.println("release_fb();");
+      release_fb();
+      return;
+    }
+  }
 
   Serial.println("saveImage();");
   saveImage();
@@ -215,3 +250,7 @@ uint8_t getLittleImageIndex(){
 bool checkReadyForSave(){
   return isReadyForSave;
 }
+
+/*void formatStorage(){
+  SD.for
+}*/
