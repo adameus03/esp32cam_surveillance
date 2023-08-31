@@ -9,6 +9,13 @@
 
 #include "analyser.hpp"
 
+//#include <stdlib.h>
+//#include <stdio.h>
+//#include <string.h>
+//#include <bits/stl_vector.h>
+#include <vector>
+//#include <bits/stl_iterator_base_funcs.h>
+
 //#define IMAGE_INTERVAL_US 500000
 //#define IMAGE_MAX_LITTLE_INDEX 1
 #define IMAGE_INTERVAL_US 300000
@@ -83,13 +90,17 @@ void initializeDirectoryStorage(){
     delay(1000);
   }*/
   storageDirectory = "/";
+
+  if(!SD_MMC.exists("/master.txt")){
+    SD_MMC.open("/master.txt", FILE_WRITE, true);
+  }
 }
 
 // Initialize the micro SD card
 void initMicroSDCard(){
   // Start Micro SD card
   Serial.println("Starting SD Card");
-  if(!SD_MMC.begin()){
+  if(!SD_MMC.begin(/*"/sdcard", true*/)){
     Serial.println("SD Card Mount Failed");
     return;
   }
@@ -151,27 +162,184 @@ void saveImage(){
 
 
     ///<compression>
-    uint8_t *jpg_buf = NULL;
+    /*uint8_t *jpg_buf = NULL;
     size_t jpg_buf_len;
     bool jpeg_converted = frame2jpg(frameBuffer, 80, &jpg_buf, &jpg_buf_len);
     if(!jpeg_converted){
       Serial.println("JPEG compression failed in saveImage()");
-    }
+    }*/
     ///</compression>
 
 
-    //file.write(frameBuffer->buf, frameBuffer->len); // payload (image), payload length
-    file.write(jpg_buf, jpg_buf_len);
+    file.write(frameBuffer->buf, frameBuffer->len); // payload (image), payload length
+    //file.write(jpg_buf, jpg_buf_len);
 
     //.Serial.printf("Saved: %s\n", path.c_str());
 
     ///<compression free>
-    free(jpg_buf);
+    //free(jpg_buf);
     ///</compression free>
   }
 
   file.close();
+
+  file = SD_MMC.open("/master.txt", FILE_APPEND);
+  file.write((uint8_t *)(path + "\n").c_str(), path.length() + 1);
+  file.close();
 }
+
+//static File baseImage; //not used
+//char *masterContent = nullptr;
+std::vector<String> masterEntries;
+uint32_t curr_viewing_index = 0xffffffff;
+
+void deactivateStandaloneImageSaveCycle(); //@@
+void reactivateStandaloneImageSaveCycle(); //@@
+
+/**
+ * @brief Sets index of the baseImageFile as curr_viewing_index
+*/
+void setBaseImage(File baseImageFile){
+  /*if(String(baseImage.name()).startsWith("/")){
+    Serial.println("DEBUG baseImage.name() OK");
+  }
+  else {
+    Serial.println("DEBUG baseImage.name() NOT OK");
+  }*/
+
+  //baseImage = baseImageFile; //not used
+  deactivateStandaloneImageSaveCycle();//@@
+  File masterFile = SD_MMC.open("/master.txt", FILE_READ);
+  uint32_t counter = 10;
+  while((!masterFile) && counter--){//@@
+    Serial.println("Failed to open master.txt, retrying in 1 sec....");
+    delay(1000);
+    masterFile = SD_MMC.open("/master.txt", FILE_READ);
+  }
+  //size_t masterFile_size = masterFile.size();
+  //masterContent = (char*)malloc(masterFile_size);
+
+  //masterFile.readBytes(masterContent, masterFile_size); // note: not null-terminated
+
+  char temp[50];
+
+  uint32_t index = 0x0;
+  //uint32_t ret_index = 0xffffffff;
+
+  while(masterFile.available()){
+    size_t n = masterFile.readBytesUntil('\n', temp, 50);
+    //Serial.println("setBaseImage: [" + String(n) + "] " + baseImage.name()); // DEBUG
+    temp[n] = '\0';
+    Serial.println("setBaseImage: [" + String(n) + "] " + String(temp)); // DEBUG
+
+    if(!strcmp(/*@@baseImage*/baseImageFile.name(), ((char*)temp)+0x1)){// +0x1 to omit the initial "/"
+      //ret_index = index;
+      curr_viewing_index = index;
+    }
+    masterEntries.push_back(String(temp));
+    index++;
+  }
+  masterFile.close();
+  reactivateStandaloneImageSaveCycle();//@@
+  //String(masterContent)
+  //curr_viewing_index = ret_index;
+}
+
+/**
+ * @brief Obsolete / not used
+*/
+File getImage(uint32_t index){
+  if(index >= 0 && index < masterEntries.size()){
+    curr_viewing_index = index;
+    return SD_MMC.open(masterEntries[index], FILE_READ);
+  }
+  return (File)NULL;
+  
+}
+
+/**
+ * Sets first image as base image & curr_viewing_index = 0x0
+*/
+bool rewindGallery(){
+  deactivateStandaloneImageSaveCycle();//@@
+  File masterFile = SD_MMC.open("/master.txt", FILE_READ);
+
+  uint32_t counter = 10;
+  while((!masterFile) && counter--){//@@
+    Serial.println("Failed to open master.txt, retrying in 1 sec....");
+    delay(1000);
+    masterFile = SD_MMC.open("/master.txt", FILE_READ);
+  }
+
+  char temp[50];
+  while(masterFile.available()){
+    size_t n = masterFile.readBytesUntil('\n', temp, 50);
+    temp[n] = '\0';
+    Serial.println("rewindGallery: [" + String(n) + "] " + String(temp)); // DEBUG
+
+    masterEntries.push_back(String(temp));
+  }
+  masterFile.close();
+  reactivateStandaloneImageSaveCycle();//@@
+  if(masterEntries.size() > 0){
+    curr_viewing_index = 0x0;
+    return true;
+  }
+  return false;
+}
+
+const char* getCurrImageName(){
+  if(curr_viewing_index >= 0 && curr_viewing_index < masterEntries.size()){
+    return masterEntries[curr_viewing_index].c_str();
+  }
+  return NULL;
+}
+File getNextImage(){
+  if(curr_viewing_index != 0xffffffff){
+    curr_viewing_index++;
+    if(curr_viewing_index >= masterEntries.size()){
+      return (File)NULL;
+    }
+    return SD_MMC.open(masterEntries[curr_viewing_index], FILE_READ);
+  }
+  return (File)NULL;
+}
+
+File getPrevImage(){
+  if(curr_viewing_index != 0xffffffff){
+    if(curr_viewing_index == 0x0){
+      return (File)NULL;
+    }
+    curr_viewing_index--;
+    return SD_MMC.open(masterEntries[curr_viewing_index], FILE_READ);
+  }
+  return (File)NULL;
+}
+
+File getFirstHistoryImage(){
+  if(masterEntries.empty()){
+    return (File)NULL;
+  }
+  curr_viewing_index = 0x0;
+  return SD_MMC.open(masterEntries[0x0], FILE_READ);
+}
+
+File getLastHistoryImage(){
+  if(masterEntries.empty()){
+    return (File)NULL;
+  }
+  uint32_t last_index = masterEntries.size() - 0x1;
+  curr_viewing_index = last_index;
+  return SD_MMC.open(masterEntries[last_index], FILE_READ);
+}
+
+std::vector<String>* getMasterEntries(){
+  return &masterEntries;
+}
+
+/*void releaseMasterContent(){
+  free(masterContent);
+}*/
 
 void IRAM_ATTR onImageSaveTimer(){
   //Serial.println("Image tick");
@@ -199,7 +367,7 @@ void imageSaveTickImplied(){
       Serial.println("release_fb();");
       release_fb();
     }
-    if(!checkApproval(frameBuffer->buf, frameBuffer->len, frameBuffer->width)){
+    if(!checkApproval(frameBuffer->buf, frameBuffer->len, frameBuffer->width, frameBuffer->height)){
       Serial.println("release_fb();");
       release_fb();
       return;

@@ -42,16 +42,22 @@ esp_err_t initialize_camera(){
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
-    config.pixel_format = /*PIXFORMAT_JPEG*/PIXFORMAT_RGB565;
+    config.pixel_format = PIXFORMAT_JPEG/*PIXFORMAT_RGB565*/;
+
+    //config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+    //config.grab_mode = CAMERA_GRAB_LATEST;
+    //config.fb_location = CAMERA_FB_IN_PSRAM;
+    //config.fb_location = CAMERA_FB_IN_DRAM;
 
     config.frame_size = /*FRAMESIZE_HVGA*/ FRAMESIZE_QVGA /*FRAMESIZE_SVGA*/;
     config.jpeg_quality = 10/*12*//*20*/;
     config.fb_count = 2; // what about more?
+
     return esp_camera_init(&config);
 }
 
 esp_err_t reinitialize_camera(){
-    
+
 }
 
 void freeze_load_fb(){

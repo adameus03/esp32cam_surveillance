@@ -6,6 +6,14 @@ R"TESSERACT(<!DOCTYPE html>
     </head>
     <body>
         <style>
+            /*label {
+                display: block;
+                font: 1rem "Fira Sans", sans-serif;
+            }
+
+            input, label {
+                margin: 0.4rem 0;
+            }*/
             label {
                 display: block;
                 font: 1rem "Fira Sans", sans-serif;
@@ -14,12 +22,82 @@ R"TESSERACT(<!DOCTYPE html>
             input, label {
                 margin: 0.4rem 0;
             }
+
+            body, html {
+                height: 100%;
+                margin: 0;
+            }
+
+            .bg {
+                background-image: url("https://www.thoughtco.com/thmb/81QGhTao0s1fj7PydEBkBl7gl0U=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/521928855-56a9e2925f9b58b7d0ffac0a.jpg");
+                height: 100%;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                text-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .nav_menu {
+                border-style: solid;
+                border-color: green;
+                width: 50%;
+                height: 50%;
+                display: inline-block;
+                width: 60%;
+                height: auto;
+            }
+
+            a, .nav_option {
+                text-decoration: none;
+                font-size: 25px;
+                background-color: #333;
+                color: #eee;
+                border-style: solid;
+                border-width: 1px;
+                border-color: #222;
+            }
+
+            a:hover,
+                .nav_option:hover {
+                color: red;
+            }
+
+            .nav_option img {
+                width: 50px;
+                height: 50px;
+            }
+
         </style>
-        <label for="playback-start-time">Wybierz początek odtwarzania:</label>
+        <!--<label for="playback-start-time">Wybierz początek odtwarzania:</label>
         <input type="datetime-local" id="playback-start-time" name="playback-start-time"/>
-        <button id='play_btn'>Odtwarzaj</button>
+        <button id='play_btn'>Odtwarzaj</button>-->
+
+        <div class='bg'>
+            <div class='nav_menu'>
+                <div class='nav_option'><label for="playback-start-time">Wybierz początek odtwarzania:</label>
+                <input type="datetime-local" id="playback-start-time" name="playback-start-time" />
+                <button id='play_btn'>Uruchom skanowanie (kilkanaście sekund)</button>
+                </div>
+                <div class='nav_option'><img id='signal' src='https://clipart-library.com/images/pi7KzXb5T.jpg' /></div>
+                <div class='nav_option'><span onclick='firstFrame()'>Pierwsza klatka</span></div>
+                <div class='nav_option'><span onclick='lastFrame()'>Ostatnia klatka</span></div>
+                <div class='nav_option'><span onclick='nextFrame()'>Klatka w przód</span></div>
+                <div class='nav_option'><span onclick='prevFrame()'>Klatka w tył</span></div>
+                <div class='nav_option'>Odtwarzaj w przód (N/A)</div>
+                <div class='nav_option'>Odtwarzaj w tył (N/A)</div>
+                <div class='nav_option'>Stop (N/A)</div>
+                <div class='nav_option'><span onclick='listFrames()'>Lista klatek</span></div>
+                <!--<div class='nav_option'><span onclick='listFrames()'>Przeładuj listę</span></div>-->
+                <div class='nav_option'><a href='/' onclick='window.stop()'>POWRÓT</a></div>
+            </div>
+        </div>
 
         <script>
+            var img;
+            var discriminant = 0;
             window.onload=()=>{
                 // Get the current datetime in the format "YYYY-MM-DDTHH:MM:SS"
                 let now = new Date();
@@ -27,12 +105,48 @@ R"TESSERACT(<!DOCTYPE html>
                 // Set the current datetime as the default value for the input
                 document.getElementById('playback-start-time').value = nowString;
                 document.getElementById('play_btn').addEventListener('click', (e)=>{
+                    document.getElementById('play_btn').disabled = true;
                     let selectedDatetime = new Date(document.getElementById('playback-start-time').value);
                     // Format the date into the "YYYY-MM-DD_HH-MM-SS" format
                     let formattedDatetime = `${selectedDatetime.getFullYear()}-${(selectedDatetime.getMonth() + 1).toString().padStart(2, '0')}-${selectedDatetime.getDate().toString().padStart(2, '0')}_${selectedDatetime.getHours().toString().padStart(2, '0')}-${selectedDatetime.getMinutes().toString().padStart(2, '0')}-${selectedDatetime.getSeconds().toString().padStart(2, '0')}`;
-                    document.location = `past?time=${formattedDatetime}`;
+                    //document.location = `past?time=${formattedDatetime}`;
+                    document.getElementById('signal').src = `past?base=${formattedDatetime}`;
                 });
+
+                let passed_src = findGetParameter("pass");
+                if(passed_src){
+                    document.getElementById('signal').src = passed_src;
+                }
             };
+            function firstFrame(){
+                document.getElementById('signal').src = "past?nav=first";
+            }
+            function lastFrame(){
+                document.getElementById('signal').src = "past?nav=last";
+            }
+            function nextFrame(){
+                document.getElementById('signal').src = "past?nav=next&d=" + discriminant++;
+            }
+            function prevFrame(){
+                //toggle = !toggle;
+                document.getElementById('signal').src = "past?nav=prev&d=" + discriminant++;
+            }
+            function listFrames(){
+                document.location = "past?nav=list";
+            }
+
+            function findGetParameter(parameterName) {
+                var result = null,
+                    tmp = [];
+                location.search
+                    .substr(1)
+                    .split("&")
+                    .forEach(function (item) {
+                    tmp = item.split("=");
+                    if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+                    });
+                return result;
+            }
         </script>
     </body>
 </html>)TESSERACT"

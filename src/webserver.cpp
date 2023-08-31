@@ -38,7 +38,7 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
     }
 
     Serial.println("Deattaching the image save interrupt");
-    deactivateStandaloneImageSaveCycle();
+    //@@deactivateStandaloneImageSaveCycle();
 
     //uint16_t fps = 0;
     ulong start_millis = millis();
@@ -53,29 +53,27 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
         } 
 
         ///<compression>
-        uint8_t *jpg_buf = NULL;
+        /*uint8_t *jpg_buf = NULL;
         size_t jpg_buf_len;
         bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
         if(!jpeg_converted){
             Serial.println("JPEG compression failed");
             res = ESP_FAIL;
-        }
+        }*/
         ///</compression>
-
-
-
+        
         if(res == ESP_OK){
             size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fb->len);
             res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
         }
         
         if(res == ESP_OK){
-            //res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
-            res = httpd_resp_send_chunk(req, (char*)jpg_buf, jpg_buf_len);
+            res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
+            //res = httpd_resp_send_chunk(req, (char*)jpg_buf, jpg_buf_len);
         }
 
         ///<compression free>
-        free(jpg_buf);
+        //free(jpg_buf);
         ///</compression free>
         
         if(res == ESP_OK){
@@ -105,7 +103,7 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
         }*/
     }
 
-    reactivateStandaloneImageSaveCycle(); //RE!
+    //@@reactivateStandaloneImageSaveCycle(); //RE!
     return res; //?
 }
 
@@ -118,12 +116,12 @@ static esp_err_t stream_handler(httpd_req_t* req){
     return ESP_OK;
 }
 
-static esp_err_t present_handler(httpd_req_t* req){
+/*static esp_err_t present_handler(httpd_req_t* req){
     const char* response = "PRESENT";
     httpd_resp_send(req, response, strlen(response));
 
     return ESP_OK;
-}
+}*/
 
 esp_err_t stream_image(std::shared_ptr<File> file, httpd_req_t* req, const size_t& fsize){
     // Read and send image data in chunks
@@ -144,6 +142,9 @@ esp_err_t stream_image(std::shared_ptr<File> file, httpd_req_t* req, const size_
             break;
         }
     }
+
+    httpd_resp_send_chunk(req, NULL, 0);
+
     return res;
 }
 
@@ -157,6 +158,277 @@ void liu(uint8_t* lip, tm* tip){//little index update
     else {
         (*lip)++;
     }
+}
+
+static esp_err_t send_list_chunk(httpd_req_t* req, const uint32_t& offset, const uint32_t& chunk_len, std::vector<String>* filePaths){
+    String response = "";
+    //Serial.println("LIST SIZE: " + String(filePaths->size())); // DEBUG
+    for (uint32_t i = 0x0; i < chunk_len; i++){
+        //response += "<p>" + (*filePaths)[offset+i] + "</p>";
+        //response += "<p><a href='/pastselect?pass=/past?nav=atindex&ind=" + String(i) + "'>" + (*filePaths)[offset + i] + "</a></p>";
+        response += "<p><a href='/pastselect?pass=%2Fpast%3Fnav%3Datindex%26ind%3D" + String(i) + "'>" + (*filePaths)[offset + i] + "</a></p>";
+        
+    }
+    return httpd_resp_send_chunk(req, response.c_str(), response.length());
+}
+
+static esp_err_t past_index_subhandler(httpd_req_t* req, char* query){
+    char nav_param[20];
+    if (httpd_query_key_value(query, "nav", nav_param, sizeof(nav_param)) != ESP_OK) {
+        const char *response = "No time & index param or error reading time & index param.";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    if(!getCurrImageName()){
+        /*const char *response = "No base image selected!";
+        httpd_resp_send(req, response, strlen(response));*/
+        rewindGallery(); //by default set the gallery index as 0
+        //return ESP_OK;
+    }   
+    
+    if(!strcmp("datetime", nav_param)){
+        const char *response = getCurrImageName();
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+    else if(!strcmp("list", nav_param)){
+        /*String response = "";
+        std::vector<String>* filePaths = getMasterEntries();
+        Serial.println("LIST SIZE: " + String(filePaths->size())); // DEBUG
+        for (uint32_t i = 0x0; i < filePaths->size(); i++){
+            response += "<p>" + (*filePaths)[i] + "</p>";
+        }
+        httpd_resp_send(req, response.c_str(), response.length());
+        return ESP_OK;*/
+        std::vector<String> *filePaths = getMasterEntries();
+        Serial.println("LIST SIZE: " + String(filePaths->size())); // DEBUG
+        uint32_t chunk_len = 100;
+        uint32_t full_chunks_count = filePaths->size() / chunk_len;
+        uint32_t chunk_rem = filePaths->size() % chunk_len;
+
+        uint32_t offset = 0x0;
+
+        for (uint32_t i = 0x0; i < full_chunks_count; i++){
+            send_list_chunk(req, offset, chunk_len, filePaths);
+            offset += chunk_len;
+        }
+        if(chunk_rem){
+            send_list_chunk(req, offset, chunk_rem, filePaths);
+        }
+        httpd_resp_send_chunk(req, NULL, 0);
+        return ESP_OK;
+    }
+    else {
+        File file;
+        esp_err_t res = ESP_OK;
+        if(!strcmp("next", nav_param)){
+            file = getNextImage();
+        }
+        else if(!strcmp("prev", nav_param)){
+            file = getPrevImage();
+        }
+        else if(!strcmp("first", nav_param)){
+            file = getFirstHistoryImage();
+        }
+        else if(!strcmp("last", nav_param)){
+            file = getLastHistoryImage();
+        }
+        else if(!strcmp("atindex", nav_param)){
+            char ind_param[20];
+            if (httpd_query_key_value(query, "ind", ind_param, sizeof(ind_param)) != ESP_OK) {
+                const char *response = "No ind param.";
+                httpd_resp_send(req, response, strlen(response));
+                return ESP_OK;
+            }
+            file = getImage(atoll(ind_param));
+        }
+        else {
+            const char *response = "Invalid nav option selected";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;
+        }
+
+        if(!file){
+            const char *response = "NULL file";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;
+        }
+
+        Serial.println("READING file, name: " + String(file.name()));
+
+        static size_t fsize;
+        fsize = file.size();
+
+        char *part_buf[64];
+        //res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+        
+
+        
+        res = httpd_resp_set_type(req, "image/jpeg");
+
+        if (res != ESP_OK)
+        {
+            return res;
+        }
+
+        if(res == ESP_OK){
+            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fsize);
+            //res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
+            char hlen_str[25];
+            ulltoa(hlen, hlen_str, 10);
+            res = httpd_resp_set_hdr(req, "Content-Length", hlen_str);
+        }
+
+        if(res == ESP_OK){
+            //res = httpd_resp_send_chunk(req, (const char *)buffer, buffer_len);
+            res = stream_image(std::make_shared<File>(file), req, fsize);
+        }
+        /*if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+        }*/
+
+        file.close();
+
+        if(res != ESP_OK){
+            Serial.println("Break conditional(past)");
+            return ESP_FAIL;
+        }
+        return ESP_OK;
+    }
+    
+}
+
+static esp_err_t action_past_handler(httpd_req_t* req){
+    char query[128];
+    char base_param[32];
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        if (httpd_query_key_value(query, "base", base_param, sizeof(base_param)) != ESP_OK) {
+            /*const char *response = "No time param or error reading time param.";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;*/
+            return past_index_subhandler(req, query); //@@ What if ESP_FAIL?
+        }
+    }
+    else {
+        const char *response = "Invalid query.";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    String path;// = time_param;
+    File file;
+
+    tm timeinfo;
+    uint8_t little_index = 0;
+
+    //parse time_param
+    if(!strptime(base_param, "%Y-%m-%d_%H-%M-%S", &timeinfo)){
+        const char *response = "Incorrect datetime format.";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    uint32_t blank_count = 0;
+
+    //obtain first file after the given search datetime
+    while(true)
+    {
+        //[combime year,month...second into time_param]
+        char datetime_pli[24];
+        strftime(datetime_pli, sizeof(datetime_pli), "%Y-%m-%d_%H-%M-%S", &timeinfo);
+        //itoa()
+        //strcpy(datetime_pli + 19, "_" + itoa(little_index));
+        sprintf(datetime_pli + strlen(datetime_pli), "_%u", little_index);
+
+        path = datetime_pli; //instead of time_param
+        path = "/frame_" + path + ".jpg";
+
+        Serial.println(datetime_pli);
+        Serial.println("_" + little_index);
+        Serial.println("TRYREAD file " + path + " ...");
+
+        file = SD_MMC.open(path.c_str(), FILE_READ);
+        if(file){
+            break;
+        }
+        blank_count++;
+        if(blank_count > MAX_BLANK){
+            const char *response = "<h1>Dla tego czasu nie znaleziono klatek.</h1>";
+            httpd_resp_send(req, response, strlen(response));
+            return ESP_OK;
+        }
+
+        //"increment" timeParam(year,month...second)
+        liu(&little_index, &timeinfo);
+    }
+
+    setBaseImage(file);
+
+    /*esp_err_t res = ESP_OK;
+    char *part_buf[64];
+    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    if (res != ESP_OK)
+    {
+        return res;
+    }
+
+    while(file){
+        Serial.println("READING file " + path);
+
+        static size_t fsize;
+        fsize = file.size();
+
+        if(res == ESP_OK){
+            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fsize);
+            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
+        }
+
+        if(res == ESP_OK){
+            res = stream_image(std::make_shared<File>(file), req, fsize);
+        }
+        if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+        }
+
+
+        file.close();
+        if(res != ESP_OK){
+            Serial.println("Break conditional(past)");
+            break;
+        }
+        file = file.openNextFile();
+    }*/
+
+    Serial.println("READING file, name: " + String(file.name()));
+
+    esp_err_t res = ESP_OK;
+    static size_t fsize;
+    fsize = file.size();
+
+    char *part_buf[64];
+    res = httpd_resp_set_type(req, "image/jpeg");
+
+    if(res == ESP_OK){
+        size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fsize);
+        //res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
+        char hlen_str[25];
+        ulltoa(hlen, hlen_str, 10);
+        res = httpd_resp_set_hdr(req, "Content-Length", hlen_str);
+    }
+
+    if(res == ESP_OK){
+        //res = httpd_resp_send_chunk(req, (const char *)buffer, buffer_len);
+        res = stream_image(std::make_shared<File>(file), req, fsize);
+    }
+
+    file.close(); //@@
+
+    /*const char *response = "Base image set.";
+    httpd_resp_send(req, response, strlen(response));*/
+    //httpd_sess_trigger_close
+    return ESP_OK;
 }
 
 static esp_err_t past_handler(httpd_req_t* req){
@@ -210,7 +482,7 @@ static esp_err_t past_handler(httpd_req_t* req){
     }
     
     ulong start_millis = millis();
-    deactivateStandaloneImageSaveCycle();
+    //@@deactivateStandaloneImageSaveCycle();
 
     while(true)
     {
@@ -289,7 +561,7 @@ static esp_err_t past_handler(httpd_req_t* req){
         liu(&little_index, &timeinfo);
     }
 
-    reactivateStandaloneImageSaveCycle();
+    //@@reactivateStandaloneImageSaveCycle();
     return res; //?
 }
 
@@ -528,17 +800,10 @@ void startWebServer(){
         .user_ctx = NULL
     };
 
-    /*httpd_uri_t index_uri_present = {
-        .uri = "/present",
-        .method = HTTP_GET,
-        .handler = present_handler,
-        .user_ctx = NULL
-    };*/
-
     httpd_uri_t index_uri_past = {
         .uri = "/past",
         .method = HTTP_GET,
-        .handler = past_handler,
+        .handler = /*past_handler*/action_past_handler,
         .user_ctx = NULL
     };
 
@@ -548,13 +813,6 @@ void startWebServer(){
         .handler = root_handler,
         .user_ctx = NULL
     };
-
-    /*httpd_uri_t index_uri_ls = {
-        .uri = "/ls",
-        .method = HTTP_GET,
-        .handler = ls_handler,
-        .user_ctx = NULL
-    };*/
 
     httpd_uri_t index_uri_pastselect = {
         .uri = "/pastselect",
@@ -583,11 +841,6 @@ void startWebServer(){
         .handler = cmd_handler,
         .user_ctx = NULL
     };
-    /*httpd_uri_t index_uri_wildcard_lvl_1 = {
-        .uri = "/m/*",
-        .method = HTTP_GET,
-        .handler = wildcard_level_1_uri_handler_router,
-        .user_ctx = NULL};*/
 
     // Serial.printf("Starting web server on port: '%d'\n", config.server_port);
     if (httpd_start(&server_httpd, &config) == ESP_OK)

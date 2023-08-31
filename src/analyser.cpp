@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "esp_camera.h"
 
 #define INCOMPATIBLE_BUF_SZ_DIFF_INDEX 271
 #define NULL_BUF_DIFF_INDEX 0 
@@ -40,9 +41,12 @@ bool checkCaching(){
     return isCachingActivated;
 }
 
-uint32_t diff_index(uint8_t* buf, size_t buf_sz, size_t buf_w){
-    uint64_t ssum = 0x0;
+uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t buf_h){
+    const size_t buf_sz = buf_w * buf_h * 3;
+    uint8_t* buf = (uint8_t*)malloc(buf_sz);
+    jpg2rgb565(jpg_buf, jpg_buf_sz, buf, JPG_SCALE_NONE); //@@
 
+    uint64_t ssum = 0x0;
     if(!buf){
         ssum = NULL_BUF_DIFF_INDEX;
         return ssum;
@@ -80,7 +84,7 @@ uint32_t diff_index(uint8_t* buf, size_t buf_sz, size_t buf_w){
         }*/
 
         uint32_t buf_3w = 3 * buf_w;
-        uint32_t buf_h = buf_sz / buf_3w;
+        //uint32_t buf_h = buf_sz / buf_3w;
 
         uint32_t temp1;
         uint32_t temp2;
@@ -119,12 +123,13 @@ uint32_t diff_index(uint8_t* buf, size_t buf_sz, size_t buf_w){
         }
         
         memcpy(cached_buf, buf, buf_sz);
+        free(buf); //@@
         return ssum / buf_sz;
     }
 }
 
-uint32_t checkApproval(uint8_t* buf, size_t buf_sz, size_t buf_w){
-    uint32_t diff = diff_index(buf, buf_sz, buf_w);
+uint32_t checkApproval(uint8_t* buf, size_t buf_sz, size_t buf_w, size_t buf_h){
+    uint32_t diff = diff_index(buf, buf_sz, buf_w, buf_h);
     Serial.println(String(diff) + "/ " + String(ANALYSER_APPROVAL_THRESHOLD));
     if(isCachingActivated){
         return diff >= ANALYSER_APPROVAL_THRESHOLD;

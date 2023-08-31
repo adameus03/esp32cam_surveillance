@@ -10,6 +10,13 @@
   [ ] OTA debug(override serial) #4
   [x] OTA upload using timer interrupt #5
   [ ] Watchdog #6
+
+
+  {o} quick file timeline
+  { } change camera settings
+  { } push notifications
+  { } speaker
+  { } change camera settings according to conditions?
 */
 
 /*
@@ -57,26 +64,29 @@ void setup() {
   startHandlingPublicOTA();
   haltPublicOTA(); // {{{not too early?}}}
 
+  ///<critical>
   delay(3000);
   initGallery();
   Serial.println("After initGallery()");
   activateStandaloneImageSaveCycle();
   Serial.println("After activateStandaloneImageSaveCycle()");
+  ///</critical>
   
   startWebServer(); //C//
 }
 
 void loop() {
+  
   if(checkReadyForSave()){
     imageSaveTickImplied();
   }
-  /*if(checkIfTimeForOTAHandle()){
-    OTATickImplied();
-  }*/
+  //if(checkIfTimeForOTAHandle()){
+  //  OTATickImplied();
+  //}
   
-  /*if(checkIfTimeForHTTPHandle()){
-    HTTPTickImplied();
-  }*/
+  //if(checkIfTimeForHTTPHandle()){
+  //HTTPTickImplied();
+  //}
 
   if(checkIfTimeForPublicOTAHandle()){
     publicOTATickImplied();
