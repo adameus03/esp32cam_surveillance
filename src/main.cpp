@@ -13,6 +13,7 @@
 
 
   {o} quick file timeline
+  { } okresowe opróżnianie karty
   { } change camera settings
   { } push notifications
   { } speaker

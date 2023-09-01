@@ -166,7 +166,7 @@ static esp_err_t send_list_chunk(httpd_req_t* req, const uint32_t& offset, const
     for (uint32_t i = 0x0; i < chunk_len; i++){
         //response += "<p>" + (*filePaths)[offset+i] + "</p>";
         //response += "<p><a href='/pastselect?pass=/past?nav=atindex&ind=" + String(i) + "'>" + (*filePaths)[offset + i] + "</a></p>";
-        response += "<p><a href='/pastselect?pass=%2Fpast%3Fnav%3Datindex%26ind%3D" + String(i) + "'>" + (*filePaths)[offset + i] + "</a></p>";
+        response += "<p><a href='/pastselect?pass=%2Fpast%3Fnav%3Datindex%26ind%3D" + String(offset+i) + "'>" + (*filePaths)[offset + i] + "</a></p>";
         
     }
     return httpd_resp_send_chunk(req, response.c_str(), response.length());
