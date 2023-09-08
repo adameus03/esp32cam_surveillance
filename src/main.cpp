@@ -12,7 +12,8 @@
   [ ] Watchdog #6
 
 
-  {o} quick file timeline
+  {x} quick file timeline
+      { } auto playback
   { } okresowe opróżnianie karty
   { } change camera settings
   { } push notifications
@@ -27,7 +28,6 @@
 */
 
 #include <ArduinoOTA.h>
-
 #include "esp_camera.h"
 #include <WiFi.h>
 #include "esp_timer.h"
@@ -36,7 +36,7 @@
 #include "fb_gfx.h"
 #include "soc/soc.h" //disable brownout problems
 #include "soc/rtc_cntl_reg.h"  //disable brownout problems
-#include "esp_http_server.h"
+//#include "esp_http_server.h"
 
 #include "camera.hpp"
 #include "webserver.hpp"
