@@ -372,6 +372,10 @@ void imageSaveTickImplied(){
       release_fb();
       return;
     }
+    else {
+      //{{{notify user}}}, {{{play alarm}}}
+
+    }
   }
 
   Serial.println("saveImage();");
