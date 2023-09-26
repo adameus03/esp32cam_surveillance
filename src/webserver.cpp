@@ -1,6 +1,6 @@
 #include <WiFi.h>
-//$$#include "esp_http_server.h"
-#include "esp_https_server.h" //$$
+#include "esp_http_server.h"
+//$$#include "esp_https_server.h" //$$
 #include "esp_camera.h"
 
 #include "gallery.hpp"
@@ -321,6 +321,10 @@ static esp_err_t action_past_handler(httpd_req_t* req){
         httpd_resp_send(req, response, strlen(response));
         return ESP_OK;
     }
+
+    ///<For now always rewind gallery> instead>
+    rewindGallery();
+    ///</For now always rewind gallery> instead>
 
     String path;// = time_param;
     File file;
@@ -709,10 +713,12 @@ static esp_err_t cmd_handler(httpd_req_t* req){
     }
 
     if(!strcmp("format", op_param)){
-        //Formatuj {{{implement ???}}}
+        //Formatuj usd :)
 
+        formatStorage();
 
-        const char *response = "Micro SD format not implemented";
+        //const char *response = "Micro SD format not implemented";
+        const char* response = "Micro SD card formatted!";
         httpd_resp_send(req, response, strlen(response));
     }
     else if(!strcmp("diff", op_param)){
@@ -787,13 +793,13 @@ void initializeWebServer(){
 }*/
 
 void startWebServer(){  //https://github.com/espressif/esp-idf/blob/82cceabc6e6a0a2d8c40e2249bc59917cc5e577a/examples/protocols/https_server/simple/main/main.c
-    //$$httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG(); //$$
     
     //mbedtls_debug_set_threshold(4); // verbose tls handshake debugging
     //mbedtls_ssl_conf_dbg()
-    httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT(); //$$
-    //$$config.task_priority = 1U;
-    config.httpd.task_priority = 1U;
+    //$$$$httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
+    config.task_priority = 1U; //$$
+    //$$$$config.httpd.task_priority = 1U;
     ////config.server_port = 80;
 
     /*const char *servercert =
@@ -802,29 +808,29 @@ void startWebServer(){  //https://github.com/espressif/esp-idf/blob/82cceabc6e6a
     config.cacert_pem = (uint8_t*)servercert; //$$
     config.cacert_len = strlen(servercert); //$$*/
     
-    extern const unsigned char servercert_start[] asm("_binary_include_certs_servercert_pem_start");
+    /*$$$$extern const unsigned char servercert_start[] asm("_binary_include_certs_servercert_pem_start");
     extern const unsigned char servercert_end[] asm("_binary_include_certs_servercert_pem_end");
     config.cacert_pem = servercert_start;
-    config.cacert_len = servercert_end - servercert_start;
+    config.cacert_len = servercert_end - servercert_start;*/
 
-    Serial.println("CACERT ASM LENGTH: " + String(config.cacert_len)); //DEBUG
+    //$$$$Serial.println("CACERT ASM LENGTH: " + String(config.cacert_len)); //DEBUG
     
     /*const char *prvtkey =
 #include "certs/prvtkey.pem"
         ; //$$
     config.prvtkey_pem = (uint8_t *)prvtkey; //$$
     config.prvtkey_len = strlen(prvtkey); //$$*/
-    extern const unsigned char prvtkey_start[] asm("_binary_include_certs_prvtkey_pem_start");
+    /*$$$$extern const unsigned char prvtkey_start[] asm("_binary_include_certs_prvtkey_pem_start");
     extern const unsigned char prvtkey_end[] asm("_binary_include_certs_prvtkey_pem_end");
     config.prvtkey_pem = prvtkey_start;
-    config.prvtkey_len = prvtkey_end - prvtkey_start;
+    config.prvtkey_len = prvtkey_end - prvtkey_start;*/
 
     //MBEDTLS_ERR_SSL_WANT_READ
     //MBEDTLS_ERR_SSL_WANT_WRITE
     //MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS
     //MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS
 
-    Serial.println("PRVTKEY ASM LENGTH: " + String(config.prvtkey_len)); //DEBUG
+    //$$$$Serial.println("PRVTKEY ASM LENGTH: " + String(config.prvtkey_len)); //DEBUG
 
     httpd_uri_t index_uri_rt_stream = {
         .uri = "/rt_stream",
@@ -883,8 +889,8 @@ void startWebServer(){  //https://github.com/espressif/esp-idf/blob/82cceabc6e6a
     };
     
     // Serial.printf("Starting web server on port: '%d'\n", config.server_port);
-    //$$if (httpd_start(&server_httpd, &config) == ESP_OK)
-    if(httpd_ssl_start(&server_httpd, &config)) //$$
+    if (httpd_start(&server_httpd, &config) == ESP_OK) //$$
+    //$$if(httpd_ssl_start(&server_httpd, &config))
     {
         httpd_register_uri_handler(server_httpd, &index_uri_rt_stream);
         httpd_register_uri_handler(server_httpd, &index_uri_stream);

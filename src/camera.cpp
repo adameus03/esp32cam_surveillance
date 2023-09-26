@@ -49,7 +49,7 @@ esp_err_t initialize_camera(){
     //config.fb_location = CAMERA_FB_IN_PSRAM;
     //config.fb_location = CAMERA_FB_IN_DRAM;
 
-    config.frame_size = /*FRAMESIZE_HVGA*/ FRAMESIZE_QVGA /*FRAMESIZE_SVGA*/;
+    config.frame_size = FRAMESIZE_HVGA /*FRAMESIZE_QVGA*/ /*FRAMESIZE_SVGA*/ /*FRAMESIZE_UXGA*/;
     config.jpeg_quality = 10/*12*//*20*/;
     config.fb_count = 2; // what about more?
 

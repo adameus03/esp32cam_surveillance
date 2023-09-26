@@ -16,6 +16,10 @@
 #include <vector>
 //#include <bits/stl_iterator_base_funcs.h>
 
+#include "alarm_broker.hpp"
+
+#include "formatter.hpp"
+
 //#define IMAGE_INTERVAL_US 500000
 //#define IMAGE_MAX_LITTLE_INDEX 1
 #define IMAGE_INTERVAL_US 300000
@@ -374,6 +378,7 @@ void imageSaveTickImplied(){
     }
     else {
       //{{{notify user}}}, {{{play alarm}}}
+      notifyAlarmSoundSystem();
 
     }
   }
@@ -423,6 +428,6 @@ bool checkReadyForSave(){
   return isReadyForSave;
 }
 
-/*void formatStorage(){
-  SD.for
-}*/
+esp_err_t formatStorage(){
+  return format_sdcard(SD_MMC.getCard());
+}

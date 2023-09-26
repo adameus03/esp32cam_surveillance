@@ -30,3 +30,4 @@ File getFirstHistoryImage();
 File getLastHistoryImage();
 
 std::vector<String>* getMasterEntries();
+esp_err_t formatStorage();

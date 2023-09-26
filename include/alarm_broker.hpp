@@ -1,0 +1,2 @@
+//void initializeAlarmAndroidServer();
+void notifyAlarmSoundSystem();
