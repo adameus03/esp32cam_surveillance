@@ -49,9 +49,9 @@ static esp_err_t rt_stream_handler(httpd_req_t *req){
     ulong start_millis = millis();
 
     while(true){
-        Serial.println("Before esp_camera_fb_get() in stream handler");
+        //Serial.println("Before esp_camera_fb_get() in stream handler"); //V
         fb = esp_camera_fb_get();
-        Serial.println("After esp_camera_fb_get() in stream handler");
+        //Serial.println("After esp_camera_fb_get() in stream handler");  //V
         if (!fb) {
             Serial.println("Camera capture failed in stream handler");
             res = ESP_FAIL;
@@ -324,9 +324,14 @@ static esp_err_t action_past_handler(httpd_req_t* req){
 
     ///<For now always rewind gallery> instead>
     rewindGallery();
+    File file = getLastHistoryImage();
+    if(!file){
+        Serial.println("Null file obtained from rewind last image");
+        return ESP_OK;//FAIL
+    }
     ///</For now always rewind gallery> instead>
 
-    String path;// = time_param;
+    /*String path;// = time_param;
     File file;
 
     tm timeinfo;
@@ -373,42 +378,7 @@ static esp_err_t action_past_handler(httpd_req_t* req){
         liu(&little_index, &timeinfo);
     }
 
-    setBaseImage(file);
-
-    /*esp_err_t res = ESP_OK;
-    char *part_buf[64];
-    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-    if (res != ESP_OK)
-    {
-        return res;
-    }
-
-    while(file){
-        Serial.println("READING file " + path);
-
-        static size_t fsize;
-        fsize = file.size();
-
-        if(res == ESP_OK){
-            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, fsize);
-            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-        }
-
-        if(res == ESP_OK){
-            res = stream_image(std::make_shared<File>(file), req, fsize);
-        }
-        if(res == ESP_OK){
-            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        }
-
-
-        file.close();
-        if(res != ESP_OK){
-            Serial.println("Break conditional(past)");
-            break;
-        }
-        file = file.openNextFile();
-    }*/
+    setBaseImage(file);*/
 
     Serial.println("READING file, name: " + String(file.name()));
 
@@ -720,6 +690,11 @@ static esp_err_t cmd_handler(httpd_req_t* req){
         //const char *response = "Micro SD format not implemented";
         const char* response = "Micro SD card formatted!";
         httpd_resp_send(req, response, strlen(response));
+    }
+    else if(!strcmp("reset", op_param)){
+        const char* response = "Triggering software reset...";
+        httpd_resp_send(req, response, strlen(response));
+        ESP.restart();
     }
     else if(!strcmp("diff", op_param)){
         if(checkCaching()){

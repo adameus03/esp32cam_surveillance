@@ -44,6 +44,7 @@
 //#include "synchro.hpp"
 #include "ota.hpp" //
 
+
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
  
@@ -74,6 +75,7 @@ void setup() {
   ///</critical>
   
   startWebServer(); //C//
+  initAnalyser();
 }
 
 void loop() {

@@ -29,6 +29,8 @@ hw_timer_t *imageSaveTimer = NULL;
 
 volatile bool isReadyForSave = false;
 
+bool standaloneImageSaveCycleActivated = false;
+
 //tm timeinfo;
 const char *timezone = "CET-1CEST,M3.5.0,M10.5.0/3"; // Europe/Warsaw, https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
 String storageDirectory;
@@ -265,6 +267,16 @@ File getImage(uint32_t index){
  * Sets first image as base image & curr_viewing_index = 0x0
 */
 bool rewindGallery(){
+  
+  masterEntries.clear();
+  if(!masterEntries.empty()){
+    Serial.println("Theyre not empty");
+    return false;
+  }
+  Serial.println("Theyre empty");
+
+
+  
   deactivateStandaloneImageSaveCycle();//@@
   File masterFile = SD_MMC.open("/master.txt", FILE_READ);
 
@@ -278,6 +290,12 @@ bool rewindGallery(){
   char temp[50];
   while(masterFile.available()){
     size_t n = masterFile.readBytesUntil('\n', temp, 50);
+    if(n==0){
+      Serial.println("masterFile.readBytesUntil returned 0 ! Breaking the loop, therefore...");
+      Serial.println("Position: " + String(masterFile.position()));
+      masterFile.close();
+      break;
+    }
     temp[n] = '\0';
     Serial.println("rewindGallery: [" + String(n) + "] " + String(temp)); // DEBUG
 
@@ -391,6 +409,7 @@ void imageSaveTickImplied(){
 }
 
 void activateStandaloneImageSaveCycle(){
+  standaloneImageSaveCycleActivated = true;
   Serial.println("imageSaveTimer = timerBegin(1, 80, true);");
   imageSaveTimer = timerBegin(1, 80, true);
 
@@ -405,10 +424,12 @@ void activateStandaloneImageSaveCycle(){
 }
 
 void deactivateStandaloneImageSaveCycle(){
+  standaloneImageSaveCycleActivated = false;
   timerAlarmDisable(imageSaveTimer);
 }
 
 void reactivateStandaloneImageSaveCycle(){
+  standaloneImageSaveCycleActivated = true;
   timerAlarmEnable(imageSaveTimer);
 }
 
@@ -429,5 +450,19 @@ bool checkReadyForSave(){
 }
 
 esp_err_t formatStorage(){
-  return format_sdcard(SD_MMC.getCard());
+  esp_err_t res;
+
+  if(standaloneImageSaveCycleActivated){
+    deactivateStandaloneImageSaveCycle();
+    Serial.println("Delay before format");
+    delay(3000);
+    Serial.println("Formatting...");
+    res = format_sdcard(SD_MMC.getCard());
+    reactivateStandaloneImageSaveCycle();
+  }
+  else {
+    res = format_sdcard(SD_MMC.getCard());
+  }
+
+  return res;
 }

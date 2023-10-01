@@ -49,11 +49,23 @@ esp_err_t initialize_camera(){
     //config.fb_location = CAMERA_FB_IN_PSRAM;
     //config.fb_location = CAMERA_FB_IN_DRAM;
 
+
     config.frame_size = FRAMESIZE_HVGA /*FRAMESIZE_QVGA*/ /*FRAMESIZE_SVGA*/ /*FRAMESIZE_UXGA*/;
     config.jpeg_quality = 10/*12*//*20*/;
     config.fb_count = 2; // what about more?
 
-    return esp_camera_init(&config);
+    esp_err_t res = esp_camera_init(&config);
+    if(res == ESP_OK){
+        sensor_t* s = esp_camera_sensor_get();
+        s->set_raw_gma(s, 1);
+        s->set_denoise(s, 1); //?
+        s->set_whitebal(s, 1);
+        s->set_exposure_ctrl(s, 1);
+        s->set_lenc(s, 1);
+        Serial.println("OV2640 sensor configured");
+    }
+    return res;
+
 }
 
 esp_err_t reinitialize_camera(){

@@ -1,9 +1,21 @@
-#include "Arduino.h"
+//#include "Arduino.h"
+#include "analyser.hpp"
+
 #include "esp_camera.h"
+
+#include "EEPROM.h"
+
+#include <stdlib.h>
+
+#define EEPROM_SIZE 5
+#define CACHING_EEPROM_LOC 0x0
+#define ANAL_THRESHOLD_LOC 0x1
+
 
 #define INCOMPATIBLE_BUF_SZ_DIFF_INDEX 271
 #define NULL_BUF_DIFF_INDEX 0 
 #define NULL_CACHED_BUF_DIFF_INDEX  272
+
 
 //#define ANALYSER_APPROVAL_THRESHOLD 270
 
@@ -13,11 +25,30 @@ uint8_t *cached_buf = NULL;
 uint32_t cached_buf_size = 0x0;
 bool isCachingActivated = false;
 
+#ifdef DIFFERENTIAL_MODE_WRT_INIT
+void initAnalyser(uint8_t* buf, size_t buf_sz, size_t buf_w, size_t buf_h){
+
+}
+#else
+void initAnalyser(){
+    EEPROM.begin(EEPROM_SIZE);
+    uint8_t eepromv_cel = EEPROM.read(CACHING_EEPROM_LOC);
+    uint32_t eepromv_atl = EEPROM.readULong(ANAL_THRESHOLD_LOC);
+    Serial.println("Restoring isCachingActivated=" + String(eepromv_cel));
+    isCachingActivated = eepromv_cel;
+    Serial.println("Restoring ANALYSER_APPROVAL_THRESHOLD=" + String(eepromv_atl));
+    ANALYSER_APPROVAL_THRESHOLD = eepromv_atl;
+}
+#endif
+
 void activateCaching(uint8_t* buf, size_t buf_sz){
     
     if(!isCachingActivated){
         
         isCachingActivated = true;
+        EEPROM.write(CACHING_EEPROM_LOC, 0x1);
+        EEPROM.commit();
+        Serial.println("Caching activated");
 
         if(buf){
             cached_buf = (uint8_t*)malloc(buf_sz);
@@ -35,14 +66,27 @@ void activateCaching(uint8_t* buf, size_t buf_sz){
 
 void deactivateCaching(){
     isCachingActivated = false;
+    EEPROM.write(CACHING_EEPROM_LOC, 0x0);
+    EEPROM.commit();
+    Serial.println("Caching deactivated");
 }
 
 bool checkCaching(){
     return isCachingActivated;
 }
 
+//#define CHANNEL_DIFF_NO_MINIMUM_MODE
+#define CHANNEL_DIFF_MINIMUM_MODE
+
 uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t buf_h){
     const size_t buf_sz = buf_w * buf_h * 3;
+
+    if(cached_buf_size != buf_sz){
+        Serial.println("BUFFER SIZE DIFFERENCE");//
+    }
+
+
+
     uint8_t* buf = (uint8_t*)malloc(buf_sz);
     jpg2rgb565(jpg_buf, jpg_buf_sz, buf, JPG_SCALE_NONE); //@@
 
@@ -90,6 +134,10 @@ uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t bu
         uint32_t temp2;
 
 
+        #ifdef CHANNEL_DIFF_MINIMUM_MODE
+        static uint32_t channels_delta[0x3];
+        #endif
+
         for (uint32_t i = 0x1; i < buf_h - 0x1; i++){
             for (uint32_t j = 0x1; j < buf_w - 0x1; j++){
                 for (uint32_t k = 0x0; k < 0x3; k++){
@@ -117,8 +165,35 @@ uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t bu
 
                     temp2 /= 9;
 
+                    #ifdef CHANNEL_DIFF_NO_MINIMUM_MODE
                     ssum += (temp1 - temp2) * (temp1 - temp2);
+                    #else 
+                    channels_delta[k] = (temp1 - temp2) * (temp1 - temp2);
+                    #endif
                 }
+                #ifdef CHANNEL_DIFF_MINIMUM_MODE
+                //ssum += std::min_element(channels_delta, channels_delta+0x3);
+                if(channels_delta[0x0] < channels_delta[0x1]){
+                    if(channels_delta[0x0] < channels_delta[0x2]){
+                        //channels 0 delta is min
+                        ssum += channels_delta[0x0];
+                    }
+                    else {
+                        //channels 2 delta is min
+                        ssum += channels_delta[0x2];
+                    }
+                }
+                else {
+                    if(channels_delta[0x1] < channels_delta[0x2]){
+                        //channels 1 delta is min
+                        ssum += channels_delta[0x1];
+                    }
+                    else {
+                        //channels 2 delta is min
+                        ssum += channels_delta[0x2];
+                    }
+                }
+                #endif
             }
         }
         
@@ -144,6 +219,8 @@ const uint32_t getAnalyserApprovalThreshold(){
 }
 
 void setAnalyserApprovalThreshold(const uint32_t& val){
+    EEPROM.writeULong(ANAL_THRESHOLD_LOC, val);
+    EEPROM.commit();
     ANALYSER_APPROVAL_THRESHOLD = val;
 }
 
