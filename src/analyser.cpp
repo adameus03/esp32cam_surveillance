@@ -75,8 +75,11 @@ bool checkCaching(){
     return isCachingActivated;
 }
 
-//#define CHANNEL_DIFF_NO_MINIMUM_MODE
+
 #define CHANNEL_DIFF_MINIMUM_MODE
+//#define PREWITT_MODE
+
+
 
 uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t buf_h){
     const size_t buf_sz = buf_w * buf_h * 3;
@@ -138,9 +141,16 @@ uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t bu
         static uint32_t channels_delta[0x3];
         #endif
 
-        for (uint32_t i = 0x1; i < buf_h - 0x1; i++){
-            for (uint32_t j = 0x1; j < buf_w - 0x1; j++){
+        #ifndef PREWITT_MODE
+        const uint8_t margin = 0x1;
+        #else
+        const uint8_t margin = 0x2;
+        #endif
+
+        for (uint32_t i = margin; i < buf_h - margin; i++){
+            for (uint32_t j = margin; j < buf_w - margin; j++){
                 for (uint32_t k = 0x0; k < 0x3; k++){
+                    #ifndef PREWITT_MODE
                     temp1 = buf[i * buf_3w + 3*j+k] +
                         buf[(i - 1) * buf_3w + 3*j+k] +
                         buf[i * buf_3w + 3*(j - 1)+k] +
@@ -150,8 +160,6 @@ uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t bu
                         buf[(i + 1) * buf_3w + 3*(j + 1)+k] +
                         buf[(i - 1) * buf_3w + 3*(j + 1)+k] +
                         buf[(i + 1) * buf_3w + 3*(j - 1)+k];
-
-                    temp1 /= 9;
 
                     temp2 = cached_buf[i * buf_3w + 3*j+k] +
                         cached_buf[(i - 1) * buf_3w + 3*j+k] +
@@ -163,9 +171,57 @@ uint32_t diff_index(uint8_t* jpg_buf, size_t jpg_buf_sz, size_t buf_w, size_t bu
                         cached_buf[(i - 1) * buf_3w + 3*(j + 1)+k] +
                         cached_buf[(i + 1) * buf_3w + 3*(j - 1)+k];
 
+                    #else
+                    temp1 = buf[(i-2)*buf_3w+3*(j+1)+k]+
+                            buf[(i-2)*buf_3w+3*(j+2)+k]+
+                            2*buf[(i-1)*buf_3w+3*(j+1)+k]+
+                            2*buf[(i-1)*buf_3w+3*(j+2)+k]+
+                            3*buf[i*buf_3w+3*(j+1)+k]+
+                            3*buf[i*buf_3w+3*(j+2)+k]+
+                            2*buf[(i+1)*buf_3w+3*(j+1)+k]+
+                            2*buf[(i+1)*buf_3w+3*(j+2)+k]+
+                            buf[(i+2)*buf_3w+3*(j+1)+k]+
+                            buf[(i+2)*buf_3w+3*(j+2)+k]-
+
+                            buf[(i-2)*buf_3w+3*(j-1)+k]-
+                            buf[(i-2)*buf_3w+3*(j-2)+k]-
+                            2*buf[(i-1)*buf_3w+3*(j-1)+k]-
+                            2*buf[(i-1)*buf_3w+3*(j-2)+k]-
+                            3*buf[i*buf_3w+3*(j-1)+k]-
+                            3*buf[i*buf_3w+3*(j-2)+k]-
+                            2*buf[(i+1)*buf_3w+3*(j-1)+k]-
+                            2*buf[(i+1)*buf_3w+3*(j-2)+k]-
+                            buf[(i+2)*buf_3w+3*(j-1)+k]-
+                            buf[(i+2)*buf_3w+3*(j-2)+k];
+
+                    temp2 = cached_buf[(i-2)*buf_3w+3*(j+1)+k]+
+                            cached_buf[(i-2)*buf_3w+3*(j+2)+k]+
+                            2*cached_buf[(i-1)*buf_3w+3*(j+1)+k]+
+                            2*cached_buf[(i-1)*buf_3w+3*(j+2)+k]+
+                            3*cached_buf[i*buf_3w+3*(j+1)+k]+
+                            3*cached_buf[i*buf_3w+3*(j+2)+k]+
+                            2*cached_buf[(i+1)*buf_3w+3*(j+1)+k]+
+                            2*cached_buf[(i+1)*buf_3w+3*(j+2)+k]+
+                            cached_buf[(i+2)*buf_3w+3*(j+1)+k]+
+                            cached_buf[(i+2)*buf_3w+3*(j+2)+k]-
+
+                            cached_buf[(i-2)*buf_3w+3*(j-1)+k]-
+                            cached_buf[(i-2)*buf_3w+3*(j-2)+k]-
+                            2*cached_buf[(i-1)*buf_3w+3*(j-1)+k]-
+                            2*cached_buf[(i-1)*buf_3w+3*(j-2)+k]-
+                            3*cached_buf[i*buf_3w+3*(j-1)+k]-
+                            3*cached_buf[i*buf_3w+3*(j-2)+k]-
+                            2*cached_buf[(i+1)*buf_3w+3*(j-1)+k]-
+                            2*cached_buf[(i+1)*buf_3w+3*(j-2)+k]-
+                            cached_buf[(i+2)*buf_3w+3*(j-1)+k]-
+                            cached_buf[(i+2)*buf_3w+3*(j-2)+k];
+
+                    #endif
+
+                    temp1 /= 9;
                     temp2 /= 9;
 
-                    #ifdef CHANNEL_DIFF_NO_MINIMUM_MODE
+                    #ifndef CHANNEL_DIFF_MINIMUM_MODE
                     ssum += (temp1 - temp2) * (temp1 - temp2);
                     #else 
                     channels_delta[k] = (temp1 - temp2) * (temp1 - temp2);
